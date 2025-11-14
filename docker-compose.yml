@@ -1,0 +1,51 @@
+services:
+  # --- DATABASE & BACKEND ---
+  db:
+        image: postgres:13-alpine
+        restart: always
+        environment:
+          - POSTGRES_USER=blackbox_user
+          - POSTGRES_PASSWORD=password
+          - POSTGRES_DB=blackbox_guardian_db
+        ports:
+          - "5432:5432"
+        volumes:
+          - db_data:/var/lib/postgresql/data
+        healthcheck:
+          test: ["CMD-SHELL", "pg_isready -U blackbox_user -d blackbox_guardian_db"]
+          interval: 5s
+          timeout: 5s
+          retries: 5
+
+  backend:
+    build: ./backend
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+          db:
+            condition: service_healthy # <-- THIS IS THE KEY CHANGE
+          zap:
+            condition: service_started # zap doesn't need a healthcheck
+
+  # --- TOOL ARMORY ---
+  nmap:
+    build: ./tool_configs/nmap
+    command: ["sleep", "infinity"]
+
+  sqlmap:
+    build: ./tool_configs/sqlmap
+    command: ["sleep", "infinity"]
+
+  zap:
+    build:
+      context: ./zap-docker/docker # Build from the official source we just downloaded
+      dockerfile: Dockerfile-stable # Use the stable version's Dockerfile
+    ports:
+      - "8090:8090"
+    # The command for this official image is slightly different
+    command: >
+      zap.sh -daemon -port 8090 -host 0.0.0.0 -config api.disablekey=true
+
+volumes:
+  db_data:

@@ -1,5 +1,9 @@
 services:
   # --- DATABASE & BACKEND ---
+  redis:
+    image: redis:6-alpine
+    restart: always
+
   db:
         image: postgres:13-alpine
         restart: always
@@ -23,10 +27,24 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-          db:
-            condition: service_healthy # <-- THIS IS THE KEY CHANGE
-          zap:
-            condition: service_started # zap doesn't need a healthcheck
+      db:
+        condition: service_healthy
+      zap:
+        condition: service_healthy
+      redis: # <-- Add this dependency
+        condition: service_started
+
+  celery_worker:
+    build: ./backend
+    restart: always
+    command: celery -A celery_worker worker --loglevel=info
+    depends_on:
+      db:
+        condition: service_healthy
+      zap:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   # --- TOOL ARMORY ---
   nmap:
@@ -39,13 +57,21 @@ services:
 
   zap:
     build:
-      context: ./zap-docker/docker # Build from the official source we just downloaded
-      dockerfile: Dockerfile-stable # Use the stable version's Dockerfile
+      context: ./zap-docker/docker
+      dockerfile: Dockerfile-stable
     ports:
       - "8090:8090"
-    # The command for this official image is slightly different
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8090"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # UPDATED COMMAND TO ALLOW CONNECTIONS
     command: >
-      zap.sh -daemon -port 8090 -host 0.0.0.0 -config api.disablekey=true
+      zap.sh -daemon -port 8090 -host 0.0.0.0
+      -config api.disablekey=true
+      -config api.addrs.addr.name=.*
+      -config api.addrs.addr.regex=true
 
 volumes:
   db_data:

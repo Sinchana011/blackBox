@@ -42,3 +42,14 @@ class ScanLog(Base):
     scan_id = Column(UUID(as_uuid=True), index=True)
     message = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class ToolStatus(Base):
+    __tablename__ = "tool_statuses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    scan_id = Column(UUID(as_uuid=True), index=True)
+    tool_name = Column(String, nullable=False)
+    status = Column(String, nullable=False)
+    started_at = Column(DateTime, nullable=True)
+    finished_at = Column(DateTime, nullable=True)

@@ -34,7 +34,7 @@ def perform_scan_task(scan_id: str, target_url: str):
         db.commit()
 
         # 2. Run the actual scan by calling the orchestrator
-        raw_findings = run_full_scan(target_url) # This will take a long time
+        raw_findings = run_full_scan(scan_id, target_url) # This will take a long time
 
         # 3. Save the findings to the database
         for finding in raw_findings:

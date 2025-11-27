@@ -93,6 +93,20 @@ def get_scan_logs(scan_id: str, db: Session = Depends(get_db)):
     return [ {"message": l.message, "created_at": l.created_at} for l in logs ]
 
 
+@app.get("/scan/{scan_id}/tools")
+def get_tool_statuses(scan_id: str, db: Session = Depends(get_db)):
+    tools = db.query(models.ToolStatus).filter(models.ToolStatus.scan_id == scan_id).all()
+    out = []
+    for t in tools:
+        out.append({
+            "tool_name": t.tool_name,
+            "status": t.status,
+            "started_at": t.started_at,
+            "finished_at": t.finished_at
+        })
+    return out
+
+
 @app.get("/scans")
 def list_scans(limit: int = 20, db: Session = Depends(get_db)):
     scans = db.query(models.Scan).order_by(models.Scan.created_at.desc()).limit(limit).all()

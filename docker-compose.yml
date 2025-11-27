@@ -5,21 +5,21 @@ services:
     restart: always
 
   db:
-        image: postgres:13-alpine
-        restart: always
-        environment:
-          - POSTGRES_USER=blackbox_user
-          - POSTGRES_PASSWORD=password
-          - POSTGRES_DB=blackbox_guardian_db
-        ports:
-          - "5432:5432"
-        volumes:
-          - db_data:/var/lib/postgresql/data
-        healthcheck:
-          test: ["CMD-SHELL", "pg_isready -U blackbox_user -d blackbox_guardian_db"]
-          interval: 5s
-          timeout: 5s
-          retries: 5
+    image: postgres:13-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=blackbox_user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=blackbox_guardian_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blackbox_user -d blackbox_guardian_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./backend
@@ -82,6 +82,8 @@ services:
     working_dir: /app
     ports:
       - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
     command: bash -c "pip install --no-cache-dir streamlit requests && streamlit run app.py --server.port 8501 --server.address 0.0.0.0"
 
 volumes:

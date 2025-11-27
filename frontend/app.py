@@ -13,6 +13,20 @@ st.set_page_config(page_title="BlackBox Guardian", layout="wide")
 
 # Color scheme (modify to match your dashboard image)
 PRIMARY = "#0b5f75"
+ACCENT = "#ff6b6b"
+BG = "#0f1720"
+CARD = "#0b1220"
+
+# Minimal styling to approximate the dashboard image
+st.markdown(f"""
+<style>
+body {{ background: {BG}; color: #e6eef3; }}
+.stApp {{ background: linear-gradient(180deg, {BG} 0%, #071018 100%); }}
+.card {{ background: {CARD}; padding: 12px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }}
+.title {{ color: {PRIMARY}; font-weight:700; }}
+.risk-box {{ background: {PRIMARY}; color: white; padding: 12px; border-radius: 8px; text-align:center }}
+</style>
+""", unsafe_allow_html=True)
 
 def severity_score(sev):
     if not sev: return 0
@@ -88,19 +102,39 @@ if scan_id:
             if tool and tool.lower().startswith("sql"):
                 tools["SQLMap"] = True
 
+        # Fetch tool timestamps and show status cards
+        try:
+            tr = requests.get(f"{BACKEND}/scan/{scan_id}/tools", timeout=5)
+            tr.raise_for_status()
+            tool_statuses = {t['tool_name']: t for t in tr.json()}
+        except Exception:
+            tool_statuses = {}
+
         with processes:
             tcols = st.columns(3)
             tool_names = list(tools.keys())
             for i, name in enumerate(tool_names):
                 done = tools[name]
-                color = "green" if done else "orange" if status=="RUNNING" else "gray"
-                tcols[i].markdown(f"**{name}**\n\n: { '✅' if done else '⏳' } ")
+                t = tool_statuses.get(name)
+                status_lines = []
+                if t:
+                    if t.get('started_at'):
+                        status_lines.append(f"Started: {t.get('started_at')}")
+                    if t.get('finished_at'):
+                        status_lines.append(f"Finished: {t.get('finished_at')}")
+                badge = '✅ Completed' if done else ('⏳ Running' if status == 'RUNNING' else '⏸ Pending')
+                content = f"<div class='card'><strong>{name}</strong><br/>{badge}<br/>{'<br/>'.join(status_lines)}</div>"
+                tcols[i].markdown(content, unsafe_allow_html=True)
 
-        # Compute simple risk score
+        # Compute simple risk score and render gauge (normalized 0-100)
         score = 0
         for f in findings:
             score += severity_score(f.get("severity"))
-        score_box.markdown(f"### {score}")
+        # Simple normalization: scale to 0-100
+        norm = min(100, int(score * 10))
+        score_box.markdown(f"<div class='risk-box'><h2 style='margin:0;'>{norm}</h2><div>Risk Score</div></div>", unsafe_allow_html=True)
+        # show a progress bar below for visual gauge
+        st.progress(min(100, max(0, norm)))
 
         # Findings list
         st.subheader("Findings")

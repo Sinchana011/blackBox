@@ -29,10 +29,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      zap:
-        condition: service_healthy
       redis: # <-- Add this dependency
         condition: service_started
+    environment:
+      - ZAP_HOST=${ZAP_HOST:-zap}
+      - ZAP_PORT=${ZAP_PORT:-8090}
 
   celery_worker:
     build: ./backend
@@ -41,10 +42,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      zap:
-        condition: service_healthy
       redis:
         condition: service_started
+    environment:
+      - ZAP_HOST=${ZAP_HOST:-zap}
+      - ZAP_PORT=${ZAP_PORT:-8090}
 
   # --- TOOL ARMORY ---
   nmap:
@@ -56,9 +58,8 @@ services:
     command: ["sleep", "infinity"]
 
   zap:
-    build:
-      context: ./zap-docker/docker
-      dockerfile: Dockerfile-stable
+    image: owasp/zap2docker-stable
+    profiles: ["tools"]
     ports:
       - "8090:8090"
     healthcheck:

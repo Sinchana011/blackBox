@@ -1,7 +1,8 @@
 # backend/main.py
 
 import uuid
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -12,6 +13,15 @@ from celery_worker import perform_scan_task
 
 
 app = FastAPI(title="BlackBox Guardian API")
+
+# Allow Streamlit frontend (localhost:8501) to call the API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8501", "http://127.0.0.1:8501"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
@@ -60,3 +70,24 @@ def start_new_scan(scan_request: ScanCreate, db: Session = Depends(get_db)):
     perform_scan_task.delay(str(new_scan.id), new_scan.target_url)
     
     return new_scan
+
+
+# --- Additional API endpoints for frontend polling ---
+@app.get("/scan/{scan_id}")
+def get_scan(scan_id: str, db: Session = Depends(get_db)):
+    scan = db.query(models.Scan).filter(models.Scan.id == scan_id).first()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return scan
+
+
+@app.get("/scan/{scan_id}/findings")
+def get_findings(scan_id: str, db: Session = Depends(get_db)):
+    findings = db.query(models.RawFinding).filter(models.RawFinding.scan_id == scan_id).all()
+    return findings
+
+
+@app.get("/scans")
+def list_scans(limit: int = 20, db: Session = Depends(get_db)):
+    scans = db.query(models.Scan).order_by(models.Scan.created_at.desc()).limit(limit).all()
+    return scans

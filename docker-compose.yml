@@ -74,5 +74,15 @@ services:
       -config api.addrs.addr.name=.*
       -config api.addrs.addr.regex=true
 
+  streamlit:
+    image: python:3.11-slim
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+    ports:
+      - "8501:8501"
+    command: bash -c "pip install --no-cache-dir streamlit requests && streamlit run app.py --server.port 8501 --server.address 0.0.0.0"
+
 volumes:
   db_data:

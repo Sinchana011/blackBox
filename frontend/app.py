@@ -1,9 +1,13 @@
+import os
 import streamlit as st
 import requests
 import time
 from datetime import datetime
 
-BACKEND = st.secrets.get("BACKEND_URL", "http://localhost:8000")
+try:
+    BACKEND = st.secrets["BACKEND_URL"]
+except Exception:
+    BACKEND = os.environ.get("BACKEND_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="BlackBox Guardian", layout="wide")
 
@@ -121,7 +125,15 @@ if scan_id:
 
         # Logs — we don't have a logs endpoint; provide instructions
         st.subheader("Logs")
-        st.info("Backend and worker logs are available via Docker Compose on the host.\nRun: `docker compose logs -f backend celery_worker` to stream logs.")
+        try:
+            lr = requests.get(f"{BACKEND}/scan/{scan_id}/logs", timeout=5)
+            lr.raise_for_status()
+            logs = lr.json()
+            for l in logs:
+                created = l.get('created_at')
+                st.write(f"{created} — {l.get('message')}")
+        except Exception:
+            st.info("Logs are not available from the server. You can stream logs locally with:\n`docker compose logs -f backend celery_worker`")
 
     except Exception as e:
         st.error(f"Error fetching scan info: {e}")

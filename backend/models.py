@@ -33,3 +33,12 @@ class RawFinding(Base):
     severity = Column(String)
     url = Column(String)
     evidence = Column(String)
+
+
+class ScanLog(Base):
+    __tablename__ = "scan_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    scan_id = Column(UUID(as_uuid=True), index=True)
+    message = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)

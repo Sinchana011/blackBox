@@ -87,6 +87,12 @@ def get_findings(scan_id: str, db: Session = Depends(get_db)):
     return findings
 
 
+@app.get("/scan/{scan_id}/logs")
+def get_scan_logs(scan_id: str, db: Session = Depends(get_db)):
+    logs = db.query(models.ScanLog).filter(models.ScanLog.scan_id == scan_id).order_by(models.ScanLog.created_at).all()
+    return [ {"message": l.message, "created_at": l.created_at} for l in logs ]
+
+
 @app.get("/scans")
 def list_scans(limit: int = 20, db: Session = Depends(get_db)):
     scans = db.query(models.Scan).order_by(models.Scan.created_at.desc()).limit(limit).all()
